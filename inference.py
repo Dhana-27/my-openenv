@@ -1,5 +1,6 @@
 """
 Inference script - Judges will run this
+Uses OpenAI API client to run agent against environment
 """
 import json
 import os
@@ -10,15 +11,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from client import CyberInvestigationClient
 import requests
+from openai import OpenAI
 
-# Use port 8000 for local dev, HF Spaces will override with API_BASE_URL env var
+# Environment variables
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-dummy")
 HF_TOKEN = os.getenv("HF_TOKEN", "dummy")
 
 
-def run_task(client, task_name: str):
-    """Run a task and return score (0.0-1.0)"""
+def run_task(client, openai_client, task_name: str):
+    """Run a task with LLM reasoning and return score (0.0-1.0)"""
     print("[STEP]")
     print(json.dumps({"task": task_name, "status": "starting"}))
     
@@ -33,14 +36,43 @@ def run_task(client, task_name: str):
     for step in range(max_steps):
         available_ids = obs["available_log_ids"]
         
-        best_log = None
-        for log_id in available_ids:
-            if log_id not in visited_logs:
-                best_log = log_id
-                break
-        
-        if best_log is None:
-            best_log = available_ids[0] if available_ids else 0
+        # Use LLM to reason about which log to analyze next
+        try:
+            prompt = f"""You are analyzing system logs for security threats in task: {task_name}
+Current logs available: {available_ids}
+Already analyzed: {list(visited_logs)}
+Current observation: {obs.get('current_log_content', 'N/A')}
+
+Which log index should we analyze next? Respond with just the index number (e.g., 0 or 1)."""
+            
+            response = openai_client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=10
+            )
+            
+            # Parse LLM response to get log index
+            response_text = response.choices[0].message.content.strip()
+            best_log = int(''.join(filter(str.isdigit, response_text.split()[0]))) if response_text else None
+            
+            # Fallback if parsing fails or invalid index
+            if best_log is None or best_log not in available_ids:
+                for log_id in available_ids:
+                    if log_id not in visited_logs:
+                        best_log = log_id
+                        break
+                if best_log is None:
+                    best_log = available_ids[0] if available_ids else 0
+        except Exception as e:
+            # Fallback to deterministic approach if LLM fails
+            best_log = None
+            for log_id in available_ids:
+                if log_id not in visited_logs:
+                    best_log = log_id
+                    break
+            if best_log is None:
+                best_log = available_ids[0] if available_ids else 0
         
         step_result = client.step(best_log)
         obs = step_result["observation"]
@@ -79,6 +111,13 @@ def main():
         "api": API_BASE_URL
     }))
     
+    # Initialize OpenAI client
+    openai_client = OpenAI(
+        api_key=OPENAI_API_KEY,
+        base_url=None  # Uses OpenAI's default endpoint
+    )
+    
+    # Initialize environment client
     client = CyberInvestigationClient(base_url=API_BASE_URL)
     
     try:
@@ -93,7 +132,7 @@ def main():
     
     for task_name in tasks:
         try:
-            score = run_task(client, task_name)
+            score = run_task(client, openai_client, task_name)
             scores.append(score)
         except Exception as e:
             print("[STEP]")
@@ -108,6 +147,10 @@ def main():
         "scores": [float(s) for s in scores],
         "score": float(final_score)
     }))
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
