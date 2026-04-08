@@ -363,29 +363,37 @@ python inference.py
 
 | Task | Score | Agent Strategy | Notes |
 |------|-------|---|---|
-| Task 1 (Easy) | 0.60 | Sequential search | Finds suspicious login, penalized for wrong logs |
-| Task 2 (Medium) | 1.00 | Sequential search | Perfectly traces all lateral movement |
-| Task 3 (Hard) | 1.00 | Sequential search | Identifies full attack chain |
-| **Average** | **0.87** | — | Solid baseline for agent learning |
+| Task 1 (Easy) | 0.680 | OpenAI LLM decision-making | Identifies suspicious login with some exploration |
+| Task 2 (Medium) | 0.985 | OpenAI LLM decision-making | Traces lateral movement with high accuracy |
+| Task 3 (Hard) | 1.000 | OpenAI LLM decision-making | Identifies complete attack chain perfectly |
+| **Average** | **0.888** | — | Strong baseline with OpenAI LLM integration |
 
 ### Output Format
 
-Strictly follows [START], [STEP], [END] format:
+Strictly follows [START], [STEP], [END] single-line format:
 
-```json
-[START]
-{"inference": "cyber_investigation", "model": "cyber-investigation", "api": "http://localhost:8000"}
-[STEP]
-{"task": "task1", "status": "starting"}
-[STEP]
-{"action": "analyze_log_0", "reward": -0.1, "step": 1}
-[STEP]
-{"action": "analyze_log_1", "reward": -0.1, "step": 2}
-[STEP]
-{"action": "analyze_log_2", "reward": 0.3, "step": 3}
-...
-[END]
-{"tasks": 3, "scores": [0.6, 1.0, 1.0], "score": 0.8666666666666667}
+```
+[START] task=task1 env=cyber_investigator model=gpt-4o-mini
+[STEP] step=1 action=analyze_log_0 reward=-0.07 done=false error=null
+[STEP] step=2 action=analyze_log_1 reward=-0.07 done=false error=null
+[STEP] step=3 action=analyze_log_2 reward=0.32 done=true error=null
+[END] success=true steps=3 score=0.680 rewards=-0.07,-0.07,0.32
+[START] task=task2 env=cyber_investigator model=gpt-4o-mini
+[STEP] step=1 action=analyze_log_0 reward=-0.14 done=false error=null
+[STEP] step=2 action=analyze_log_1 reward=0.27 done=false error=null
+[STEP] step=3 action=analyze_log_2 reward=0.26 done=false error=null
+[STEP] step=4 action=analyze_log_3 reward=0.30 done=true error=null
+[END] success=true steps=4 score=0.985 rewards=-0.14,0.27,0.26,0.30
+[START] task=task3 env=cyber_investigator model=gpt-4o-mini
+[STEP] step=1 action=analyze_log_0 reward=0.51 done=false error=null
+[STEP] step=2 action=analyze_log_1 reward=0.26 done=false error=null
+[STEP] step=3 action=analyze_log_2 reward=0.34 done=false error=null
+[STEP] step=4 action=analyze_log_3 reward=0.35 done=false error=null
+[STEP] step=5 action=analyze_log_4 reward=0.27 done=false error=null
+[STEP] step=6 action=analyze_log_5 reward=0.27 done=false error=null
+[STEP] step=7 action=analyze_log_6 reward=0.31 done=true error=null
+[END] success=true steps=7 score=1.000 rewards=0.51,0.26,0.34,0.35,0.27,0.27,0.31
+[DEBUG] Final average score: 0.888
 ```
 
 ---
