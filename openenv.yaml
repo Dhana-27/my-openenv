@@ -1,0 +1,51 @@
+name: cyber_investigation_env
+version: "1.0.0"
+description: >
+  OpenEnv-compatible environment for AI-driven cyber investigation.
+  Agent analyzes system logs to detect attack patterns including:
+  intrusions, lateral movement, and privilege escalation.
+
+author: Team Meta Hackathon
+license: MIT
+
+tasks:
+  - name: login_detection
+    description: Detect unusual login from unexpected location
+    difficulty: easy
+    
+  - name: lateral_movement
+    description: Trace attacker movement across multiple systems
+    difficulty: medium
+    
+  - name: privilege_escalation
+    description: Identify complete attack chain from access to compromise
+    difficulty: hard
+
+specs:
+  action_space:
+    type: discrete
+    description: "Log entry ID to examine (0-N)"
+    
+  observation_space:
+    type: dict
+    description: "Current log, available logs, suspicious score, context"
+    
+  reward_space:
+    type: continuous
+    bounds: [-0.3, 1.0]
+    description: "Step reward signal"
+    
+  max_steps: 10
+
+endpoints:
+  - /reset
+  - /step
+  - /state
+  - /health
+
+requirements:
+  - fastapi>=0.104.0
+  - uvicorn>=0.24.0
+  - pydantic>=2.0.0
+  - aiohttp>=3.9.0
+  - python>=3.10

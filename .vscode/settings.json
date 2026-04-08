@@ -1,0 +1,20 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/../../../AppData/Local/Programs/Python/Python312/python.exe",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}",
+    "${workspaceFolder}/server"
+  ],
+  "python.analysis.include": [
+    "**/*.py"
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.formatOnSave": true
+  },
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
+}
