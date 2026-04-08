@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from client import CyberInvestigationClient
 import requests
+import httpx
 from openai import OpenAI
 
 # Environment variables
@@ -138,8 +139,17 @@ def main():
         log_end(success=False, steps=0, score=0.0, rewards=[])
         return
     
-    # Initialize clients
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    # Initialize clients with proper error handling
+    try:
+        # Create httpx client explicitly to avoid version conflicts
+        http_client = httpx.Client(timeout=30.0)
+        openai_client = OpenAI(api_key=OPENAI_API_KEY, http_client=http_client)
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
+        log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
+        log_end(success=False, steps=0, score=0.0, rewards=[])
+        return
+    
     client = CyberInvestigationClient(base_url=API_BASE_URL)
     
     all_scores = []
