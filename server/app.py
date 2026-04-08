@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 import json
 import sys
 from pathlib import Path
@@ -9,6 +10,10 @@ from models import LogAnalysisAction
 from server.environment import env
 
 app = FastAPI(title="Cyber Investigation Environment")
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 async def health():
