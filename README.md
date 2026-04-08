@@ -1,3 +1,13 @@
+---
+title: Cyber Investigation Environment
+emoji: 🔍
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_file: server/app.py
+pinned: false
+---
+
 # Cyber Investigation Environment - OpenEnv
 
 An AI-driven cybersecurity environment where agents learn to detect malicious activity patterns in system logs. This environment simulates real-world security incident response, from identifying suspicious logins to tracing complex attack chains.
