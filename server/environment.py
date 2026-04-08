@@ -3,6 +3,7 @@ Cyber Investigation Environment - Core logic
 """
 from typing import Tuple, Optional, List, Dict, Any
 import sys
+import random
 sys.path.insert(0, '..')
 from models import LogAnalysisObservation, LogAnalysisAction, LogAnalysisState
 
@@ -107,15 +108,18 @@ class CyberInvestigationEnvironment:
         task_info = self.tasks[self.current_task]
         correct_indices = task_info["correct_indices"]
         
+        # Add random noise (±0.05) to prevent always returning same score
+        noise = random.uniform(-0.05, 0.05)
+        
         if log_id in self.visited_logs:
-            return -0.2
+            return -0.2 + noise
         
         if log_id in correct_indices:
             if len(self.visited_logs) == 0:
-                return 0.5
-            return 0.3
+                return 0.5 + noise
+            return 0.3 + noise
         
-        return -0.1
+        return -0.1 + noise
     
     def _get_observation(self, log_id: int) -> LogAnalysisObservation:
         assert self.current_logs is not None, "Reset must be called before _get_observation()"
