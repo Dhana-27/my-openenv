@@ -11,7 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from client import CyberInvestigationClient
 import requests
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# Use port 7860 for HF Spaces, can override with API_BASE_URL env var
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:7860")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.getenv("HF_TOKEN", "dummy")
 
