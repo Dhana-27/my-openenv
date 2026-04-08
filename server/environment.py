@@ -34,7 +34,7 @@ TASK3_LOGS = [
 ]
 
 class CyberInvestigationEnvironment:
-    def __init__(self) -> None:
+    def __init__(self, custom_logs: Optional[Dict[str, List[str]]] = None) -> None:
         self.current_task: Optional[str] = None
         self.current_logs: Optional[List[str]] = None
         self.current_log_id: int = 0
@@ -42,19 +42,29 @@ class CyberInvestigationEnvironment:
         self.step_count: int = 0
         self.max_steps: int = 10
         
+        # Use custom logs if provided, otherwise use defaults
+        if custom_logs:
+            task1_logs = custom_logs.get("task1", TASK1_LOGS)
+            task2_logs = custom_logs.get("task2", TASK2_LOGS)
+            task3_logs = custom_logs.get("task3", TASK3_LOGS)
+        else:
+            task1_logs = TASK1_LOGS
+            task2_logs = TASK2_LOGS
+            task3_logs = TASK3_LOGS
+        
         self.tasks: Dict[str, Dict[str, Any]] = {
             "task1": {
-                "logs": TASK1_LOGS,
+                "logs": task1_logs,
                 "correct_indices": [2],
                 "description": "suspicious_login_detection"
             },
             "task2": {
-                "logs": TASK2_LOGS,
+                "logs": task2_logs,
                 "correct_indices": [1, 2, 3],
                 "description": "lateral_movement_detection"
             },
             "task3": {
-                "logs": TASK3_LOGS,
+                "logs": task3_logs,
                 "correct_indices": [0, 1, 2, 3, 4, 5, 6],
                 "description": "privilege_escalation_chain"
             }
