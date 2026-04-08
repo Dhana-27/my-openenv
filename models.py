@@ -14,16 +14,6 @@ class LogAnalysisObservation(BaseModel):
     context: Dict[str, Any] = {}
 
 class LogAnalysisState(BaseModel):
-    """Episode state"""
-    episode_id: Optional[str] = None
-    step_count: int = 0
-    path_followed: List[int] = []
-    task_name: str = ""
-    game_phase: str = "investigating"
-    observation: LogAnalysisObservation
-
-
-class LogAnalysisState(BaseModel):
     """Episode state metadata"""
     episode_id: Optional[str] = None
     step_count: int = 0
