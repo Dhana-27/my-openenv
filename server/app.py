@@ -41,3 +41,13 @@ async def step(action: LogAnalysisAction):
 async def get_state():
     state = env.state
     return json.loads(state.model_dump_json())
+
+
+def main():
+    """Run the FastAPI server"""
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    main()

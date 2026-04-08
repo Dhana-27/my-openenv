@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cyber-investigator"
+version = "0.1.0"
+description = "Cyber Investigation Environment - Security log analysis using OpenEnv"
+authors = [
+    {name = "Meta Hackathon Team"},
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "requests>=2.31.0",
+    "openai>=1.3.0",
+    "openenv-core>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "flake8>=6.0",
+]
+
+[project.urls]
+Homepage = "https://huggingface.co/spaces/dhana01/cyber_investigator"
+Repository = "https://github.com/dhana01/cyber_investigator"
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.setuptools]
+packages = ["server"]
+
+[tool.setuptools.package-data]
+server = ["*.py"]
