@@ -16,10 +16,8 @@ from openai import OpenAI
 # Environment variables
 ENV_BASE_URL = "http://localhost:8000"
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-dummy")
-HF_TOKEN = os.getenv("HF_TOKEN")
-if HF_TOKEN is None:
-    raise ValueError("HF_TOKEN environment variable is required")
+
+
 
 BENCHMARK = "cyber_investigator"
 MAX_STEPS = 10
