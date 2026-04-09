@@ -17,7 +17,9 @@ from openai import OpenAI
 ENV_BASE_URL = "http://localhost:8000"
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-dummy")
-HF_TOKEN = os.getenv("HF_TOKEN", "dummy")
+HF_TOKEN = os.getenv("HF_TOKEN")
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
 
 BENCHMARK = "cyber_investigator"
 MAX_STEPS = 10
@@ -134,7 +136,7 @@ def main():
     
     # Initialize clients with proper error handling
     try:
-        openai_client = OpenAI(base_url=os.getenv("API_BASE_URL"),api_key=os.getenv("API_KEY") or os.getenv("HF_TOKEN") or "")
+        openai_client = OpenAI(base_url=os.getenv("API_BASE_URL", "https://api.openai.com/v1"),api_key=os.getenv("API_KEY") or HF_TOKEN)
     except Exception as e:
         print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
