@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: cyber-investigator
+Version: 0.1.0
+Summary: Cyber Investigation Environment - Security log analysis using OpenEnv
+Author: Meta Hackathon Team
+Project-URL: Homepage, https://huggingface.co/spaces/dhana01/cyber_investigator
+Project-URL: Repository, https://github.com/dhana01/cyber_investigator
+Requires-Python: >=3.10
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn>=0.24.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: openai>=1.28.0
+Requires-Dist: httpx>=0.24.0
+Requires-Dist: openenv-core>=0.2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: flake8>=6.0; extra == "dev"
