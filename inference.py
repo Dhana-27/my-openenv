@@ -140,7 +140,7 @@ def main():
     
     # Initialize clients with proper error handling
     try:
-        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        openai_client = OpenAI()
     except Exception as e:
         print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
