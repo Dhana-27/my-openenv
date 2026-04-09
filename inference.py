@@ -14,7 +14,7 @@ import requests
 from openai import OpenAI
 
 # Environment variables
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+ENV_BASE_URL = "http://localhost:8000"
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-dummy")
 HF_TOKEN = os.getenv("HF_TOKEN", "dummy")
@@ -131,7 +131,7 @@ Which log index should we analyze next? Respond with just the index number (e.g.
 def main():
     # Check if environment is reachable
     try:
-        requests.get(f"{API_BASE_URL}/health", timeout=2)
+        requests.get(f"{ENV_BASE_URL}/health", timeout=2)
     except:
         # Log single failed episode
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
@@ -140,14 +140,17 @@ def main():
     
     # Initialize clients with proper error handling
     try:
-        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        openai_client = OpenAI(
+            base_url=os.getenv("API_BASE_URL"),
+            api_key=os.getenv("API_KEY")
+            )
     except Exception as e:
         print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
         log_end(success=False, steps=0, score=0.0, rewards=[])
         return
     
-    client = CyberInvestigationClient(base_url=API_BASE_URL)
+    client = CyberInvestigationClient(base_url=ENV_BASE_URL)
     
     all_scores = []
     all_rewards = []
