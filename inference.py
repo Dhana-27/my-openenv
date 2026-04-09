@@ -136,7 +136,7 @@ def main():
     
     # Initialize clients with proper error handling
     try:
-        openai_client = OpenAI(base_url=os.getenv("API_BASE_URL", "https://api.openai.com/v1"),api_key=os.getenv("API_KEY") or HF_TOKEN)
+        openai_client = OpenAI(base_url=os.environ["API_BASE_URL"],api_key=os.environ["API_KEY"])
     except Exception as e:
         print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
