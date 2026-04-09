@@ -86,14 +86,8 @@ Which log index should we analyze next? Respond with just the index number (e.g.
                     best_log = available_ids[0] if available_ids else 0
         except Exception as e:
             # Fallback to deterministic approach if LLM fails
-            best_log = None
-            for log_id in available_ids:
-                if log_id not in visited_logs:
-                    best_log = log_id
-                    break
-            if best_log is None:
-                best_log = available_ids[0] if available_ids else 0
-        
+            print(f"[ERROR] LLM failed: {e}", flush=True)
+            raise e
         action_str = f"analyze_log_{best_log}"
         
         try:
@@ -140,10 +134,7 @@ def main():
     
     # Initialize clients with proper error handling
     try:
-        openai_client = OpenAI(
-            base_url=os.getenv("API_BASE_URL"),
-            api_key=os.getenv("API_KEY")
-            )
+        openai_client = OpenAI(base_url=os.getenv("API_BASE_URL"),api_key=os.getenv("API_KEY") or os.getenv("HF_TOKEN") or "")
     except Exception as e:
         print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
