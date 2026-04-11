@@ -13,155 +13,178 @@ from client import CyberInvestigationClient
 import requests
 from openai import OpenAI
 
-# Environment variables
-ENV_BASE_URL = "http://localhost:8000"
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-
-
+# ── Environment variables ────────────────────────────────────────────────────
+# HF router requires a HuggingFace token as the API key.
+# The model name must be a valid HF model ID served by the router,
+# NOT an OpenAI model name like "gpt-4o-mini".
+HF_TOKEN     = os.environ.get("HF_TOKEN", "")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://router.huggingface.co/v1")
+API_KEY      = os.environ.get("API_KEY") or HF_TOKEN
+MODEL_NAME   = os.environ.get("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
+ENV_BASE_URL = os.environ.get("ENV_BASE_URL", "http://localhost:7860")
 
 BENCHMARK = "cyber_investigator"
-MAX_STEPS = 10
+MAX_STEPS  = 10
 
+
+# ── Logging helpers ──────────────────────────────────────────────────────────
 
 def log_start(task: str, env: str, model: str):
-    """Log episode start in official format"""
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
 def log_step(step: int, action: str, reward: float, done: bool, error=None):
-    """Log step in official format"""
     error_val = error if error else "null"
-    done_val = str(done).lower()
+    done_val  = str(done).lower()
     print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
 
 
 def log_end(success: bool, steps: int, score: float, rewards: list):
-    """Log episode end in official format"""
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     success_val = str(success).lower()
     print(f"[END] success={success_val} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 
 
-def run_task(client, openai_client, task_name: str):
-    """Run a task and return score (0.0-1.0)"""
-    result = client.reset(task_name)
-    obs = result["observation"]
-    
-    visited_logs = set()
-    total_reward = 0.0
-    steps = 0
-    rewards = []
-    error = None
-    
-    for step_num in range(1, MAX_STEPS + 1):
-        available_ids = obs["available_log_ids"]
-        
-        # Use LLM to reason about which log to analyze next
-        try:
-            prompt = f"""You are analyzing system logs for security threats in task: {task_name}
-Current logs available: {available_ids}
-Already analyzed: {list(visited_logs)}
-Current observation: {obs.get('current_log_content', 'N/A')}
+# ── LLM helper ───────────────────────────────────────────────────────────────
 
-Which log index should we analyze next? Respond with just the index number (e.g., 0 or 1)."""
-            
-            response = openai_client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=10
-            )
-            
-            # Parse LLM response to get log index
-            response_text = response.choices[0].message.content.strip()
-            best_log = int(''.join(filter(str.isdigit, response_text.split()[0]))) if response_text else None
-            
-            # Fallback if parsing fails or invalid index
-            if best_log is None or best_log not in available_ids:
-                for log_id in available_ids:
-                    if log_id not in visited_logs:
-                        best_log = log_id
-                        break
-                if best_log is None:
-                    best_log = available_ids[0] if available_ids else 0
-        except Exception as e:
-            # Fallback to deterministic approach if LLM fails
-            print(f"[ERROR] LLM failed: {e}", flush=True)
-            raise e
+def pick_next_log(openai_client, task_name: str, obs: dict, visited_logs: set) -> int:
+    """
+    Ask the LLM which log index to analyze next.
+    Falls back to the first unvisited index if the LLM call fails or
+    returns an unparseable / out-of-range response.
+    """
+    available_ids: list = obs["available_log_ids"]
+
+    # ── deterministic fallback (used when LLM is unavailable) ──
+    def fallback() -> int:
+        for log_id in available_ids:
+            if log_id not in visited_logs:
+                return log_id
+        return available_ids[0] if available_ids else 0
+
+    if openai_client is None:
+        return fallback()
+
+    try:
+        prompt = (
+            f"You are analyzing system logs for security threats in task: {task_name}\n"
+            f"Available log IDs: {available_ids}\n"
+            f"Already analyzed: {sorted(visited_logs)}\n"
+            f"Current log content: {obs.get('current_log_content', 'N/A')}\n\n"
+            "Which log index should we analyze next to find suspicious activity? "
+            "Reply with ONLY a single integer (e.g. 2)."
+        )
+
+        response = openai_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=8,
+        )
+
+        raw = response.choices[0].message.content.strip()
+        # Extract first run of digits
+        digits = "".join(c for c in raw.split()[0] if c.isdigit()) if raw else ""
+        if digits:
+            candidate = int(digits)
+            if candidate in available_ids:
+                return candidate
+
+    except Exception as e:
+        print(f"[WARN] LLM call failed, using fallback: {e}", flush=True)
+
+    return fallback()
+
+
+# ── Task runner ───────────────────────────────────────────────────────────────
+
+def run_task(client: CyberInvestigationClient, openai_client, task_name: str):
+    """Run one task episode; return (score, steps, success, rewards)."""
+    result = client.reset(task_name)
+    obs    = result["observation"]
+
+    visited_logs: set  = set()
+    total_reward: float = 0.0
+    steps: int          = 0
+    rewards: list       = []
+
+    for step_num in range(1, MAX_STEPS + 1):
+        best_log   = pick_next_log(openai_client, task_name, obs, visited_logs)
         action_str = f"analyze_log_{best_log}"
-        
+
+        step_error = None
+        reward     = 0.0
+        done       = False
+
         try:
             step_result = client.step(best_log)
-            obs = step_result["observation"]
-            reward = step_result["reward"]
-            done = step_result["done"]
+            obs         = step_result["observation"]
+            reward      = step_result["reward"]
+            done        = step_result["done"]
         except Exception as e:
-            reward = 0.0
-            done = True
-            error = str(e)
-        
+            step_error = str(e)
+            done       = True
+
         visited_logs.add(best_log)
         total_reward += reward
-        steps = step_num
+        steps  = step_num
         rewards.append(reward)
-        
-        log_step(step=step_num, action=action_str, reward=reward, done=done, error=error)
-        
+
+        log_step(step=step_num, action=action_str, reward=reward, done=done, error=step_error)
+
         if done:
             break
-    
-    # Calculate final score based on task
+
+    # Normalise score to [0, 1]
     if task_name == "task1":
         score = min(1.0, max(0.0, total_reward + 0.5))
     elif task_name == "task2":
         score = min(1.0, max(0.0, total_reward + 0.3))
-    else:  # task3
+    else:   # task3
         score = min(1.0, max(0.0, total_reward + 0.1))
-    
-    success = score >= 0.0  # All scores are success
+
+    success = score > 0.0
     return score, steps, success, rewards
 
 
+# ── Entry point ───────────────────────────────────────────────────────────────
+
 def main():
-    # Check if environment is reachable
+    # 1. Check whether the environment server is reachable
     try:
-        requests.get(f"{ENV_BASE_URL}/health", timeout=2)
-    except:
-        # Log single failed episode
+        requests.get(f"{ENV_BASE_URL}/health", timeout=5)
+    except Exception:
+        print(f"[ERROR] Environment not reachable at {ENV_BASE_URL}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
         log_end(success=False, steps=0, score=0.0, rewards=[])
         return
-    
-    # Initialize clients with proper error handling
-    try:
-        openai_client = OpenAI(base_url=os.environ["API_BASE_URL"],api_key=os.environ["API_KEY"])
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize OpenAI client: {e}", flush=True, file=sys.stderr)
-        log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
-        log_end(success=False, steps=0, score=0.0, rewards=[])
-        return
-    
-    client = CyberInvestigationClient(base_url=ENV_BASE_URL)
-    
+
+    # 2. Build OpenAI client pointing at the HF router
+    openai_client = None
+    if API_KEY:
+        try:
+            openai_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+            print(f"[INFO] Using model: {MODEL_NAME} via {API_BASE_URL}", flush=True)
+        except Exception as e:
+            print(f"[WARN] Could not create OpenAI client ({e}); will use fallback heuristic.", flush=True)
+    else:
+        print("[WARN] No HF_TOKEN / API_KEY set — running with deterministic fallback.", flush=True)
+
+    client     = CyberInvestigationClient(base_url=ENV_BASE_URL)
     all_scores = []
-    all_rewards = []
-    
-    tasks = ["task1", "task2", "task3"]
-    
-    for task_name in tasks:
+
+    for task_name in ["task1", "task2", "task3"]:
         log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-        
         try:
             score, steps, success, rewards = run_task(client, openai_client, task_name)
             all_scores.append(score)
-            all_rewards.extend(rewards)
             log_end(success=success, steps=steps, score=score, rewards=rewards)
         except Exception as e:
+            print(f"[ERROR] Task {task_name} crashed: {e}", flush=True, file=sys.stderr)
             log_step(step=1, action="error", reward=0.0, done=True, error=str(e))
             log_end(success=False, steps=0, score=0.0, rewards=[])
             all_scores.append(0.0)
-    
-    # Print final summary (for debugging, not part of official format)
+
     final_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
     print(f"[DEBUG] Final average score: {final_score:.3f}", flush=True)
 
