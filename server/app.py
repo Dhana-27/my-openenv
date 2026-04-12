@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from typing import Optional
 import json
 import sys
 from pathlib import Path
@@ -11,6 +13,9 @@ from server.environment import env
 
 app = FastAPI(title="Cyber Investigation Environment")
 
+class ResetRequest(BaseModel):
+    task_name: str = "task1"
+
 @app.get("/")
 async def root():
     return RedirectResponse(url="/docs")
@@ -20,8 +25,10 @@ async def health():
     return {"status": "healthy"}
 
 @app.post("/reset")
-async def reset(task_name: str = "task1"):
-    obs = env.reset(task_name)
+async def reset(request: Optional[ResetRequest] = None, task_name: str = "task1"):
+    # Accept task_name from JSON body OR query param
+    name = (request.task_name if request else None) or task_name
+    obs = env.reset(name)
     return {
         "observation": json.loads(obs.model_dump_json()),
         "done": False

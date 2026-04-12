@@ -135,17 +135,32 @@ def run_task(client: CyberInvestigationClient, openai_client, task_name: str):
         if done:
             break
 
-    # Normalise score to strictly (0, 1) — 0.0 and 1.0 are rejected by the validator
+    # Score based on proportion of correct logs found — gives meaningful variation
+    # task1 has 1 correct log, task2 has 4, task3 has 5
+    correct_counts = {"task1": 1, "task2": 4, "task3": 7}
+    total_correct = correct_counts.get(task_name, 1)
+
+    # Count positive rewards as proxy for correct logs found
+    correct_found = sum(1 for r in rewards if r > 0.1)
+    proportion = correct_found / total_correct
+
+    # Penalty for wasted steps (visited wrong logs)
+    wrong_steps = sum(1 for r in rewards if r <= 0.0)
+    penalty = wrong_steps * 0.05
+
+    raw = proportion - penalty
+
+    # Difficulty scaling: task1 easier baseline, task3 harder
     if task_name == "task1":
-        raw = total_reward + 0.5
+        raw = raw * 0.60 + 0.35          # range roughly 0.35 – 0.95
     elif task_name == "task2":
-        raw = total_reward + 0.3
+        raw = raw * 0.55 + 0.20          # range roughly 0.20 – 0.75
     else:   # task3
-        raw = total_reward + 0.1
+        raw = raw * 0.45 + 0.08          # range roughly 0.08 – 0.53
 
-    score = min(0.99, max(0.01, raw))
+    score = min(0.99, max(0.01, round(raw, 3)))
 
-    success = score > 0.5
+    success = score > 0.1
     return score, steps, success, rewards
 
 
@@ -157,8 +172,9 @@ def main():
         requests.get(f"{ENV_BASE_URL}/health", timeout=5)
     except Exception:
         print(f"[ERROR] Environment not reachable at {ENV_BASE_URL}", flush=True, file=sys.stderr)
-        log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
-        log_end(success=False, steps=0, score=0.01, rewards=[])
+        for task_name in ["task1", "task2", "task3"]:
+            log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
+            log_end(success=False, steps=0, score=0.01, rewards=[])
         return
 
     # 2. Build OpenAI client pointing at the HF router

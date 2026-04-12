@@ -9,15 +9,15 @@ author: Team Meta Hackathon
 license: MIT
 
 tasks:
-  - name: login_detection
+  - name: task1
     description: Detect unusual login from unexpected location
     difficulty: easy
     
-  - name: lateral_movement
+  - name: task2
     description: Trace attacker movement across multiple systems
     difficulty: medium
     
-  - name: privilege_escalation
+  - name: task3
     description: Identify complete attack chain from access to compromise
     difficulty: hard
 
@@ -32,7 +32,7 @@ specs:
     
   reward_space:
     type: continuous
-    bounds: [-0.3, 1.0]
+    bounds: [-0.25, 0.55]
     description: "Step reward signal"
     
   max_steps: 10
