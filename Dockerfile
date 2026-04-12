@@ -31,6 +31,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 
 # Start the application
 CMD ["python", "app.py"]
-
-# Start server via run.py (same directory as Dockerfile)
-CMD ["python", "run.py"]
