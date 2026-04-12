@@ -29,5 +29,8 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:7860/health || exit 1
 
+# Start the application
+CMD ["python", "app.py"]
+
 # Start server via run.py (same directory as Dockerfile)
 CMD ["python", "run.py"]
