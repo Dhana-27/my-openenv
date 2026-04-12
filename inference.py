@@ -135,15 +135,17 @@ def run_task(client: CyberInvestigationClient, openai_client, task_name: str):
         if done:
             break
 
-    # Normalise score to [0, 1]
+    # Normalise score to strictly (0, 1) — 0.0 and 1.0 are rejected by the validator
     if task_name == "task1":
-        score = min(1.0, max(0.0, total_reward + 0.5))
+        raw = total_reward + 0.5
     elif task_name == "task2":
-        score = min(1.0, max(0.0, total_reward + 0.3))
+        raw = total_reward + 0.3
     else:   # task3
-        score = min(1.0, max(0.0, total_reward + 0.1))
+        raw = total_reward + 0.1
 
-    success = score > 0.0
+    score = min(0.99, max(0.01, raw))
+
+    success = score > 0.5
     return score, steps, success, rewards
 
 
@@ -156,7 +158,7 @@ def main():
     except Exception:
         print(f"[ERROR] Environment not reachable at {ENV_BASE_URL}", flush=True, file=sys.stderr)
         log_start(task="task1", env=BENCHMARK, model=MODEL_NAME)
-        log_end(success=False, steps=0, score=0.0, rewards=[])
+        log_end(success=False, steps=0, score=0.01, rewards=[])
         return
 
     # 2. Build OpenAI client pointing at the HF router
@@ -182,8 +184,8 @@ def main():
         except Exception as e:
             print(f"[ERROR] Task {task_name} crashed: {e}", flush=True, file=sys.stderr)
             log_step(step=1, action="error", reward=0.0, done=True, error=str(e))
-            log_end(success=False, steps=0, score=0.0, rewards=[])
-            all_scores.append(0.0)
+            log_end(success=False, steps=0, score=0.01, rewards=[])
+            all_scores.append(0.01)
 
     final_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
     print(f"[DEBUG] Final average score: {final_score:.3f}", flush=True)
